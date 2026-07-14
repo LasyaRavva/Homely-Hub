@@ -7,6 +7,8 @@ const propertyRoutes = require("./routes/propertyRoutes");
 const userRoutes = require("./routes/userRoutes");
 
 const app = express();
+const configuredFrontendUrl = (process.env.FRONTEND_URL || "").trim().replace(/\/$/, "");
+const fallbackFrontendUrl = "https://homelyhub-chi.vercel.app";
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
@@ -32,15 +34,14 @@ app.use((req, res, next) => {
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  const frontendOrigin =
-    process.env.FRONTEND_URL || "https://homelyhub-chi.vercel.app";
 
   const isAllowedOrigin =
     origin &&
-    (origin === process.env.FRONTEND_URL ||
-      origin === frontendOrigin ||
+    (origin === configuredFrontendUrl ||
+      origin === fallbackFrontendUrl ||
       origin === "http://localhost:3000" ||
-      origin === "http://127.0.0.1:3000");
+      origin === "http://127.0.0.1:3000" ||
+      /^https:\/\/.*\.vercel\.app$/.test(origin));
 
   if (isAllowedOrigin) {
     res.setHeader("Access-Control-Allow-Origin", origin);
