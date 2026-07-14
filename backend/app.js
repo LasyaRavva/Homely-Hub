@@ -12,18 +12,42 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use(cookieParser());
 
-const allowedOrigins = new Set(
-  [process.env.FRONTEND_URL, "http://localhost:3000", "http://127.0.0.1:3000"].filter(Boolean)
-);
+app.use((req, res, next) => {
+  const originalCookie = res.cookie.bind(res);
+
+  res.cookie = (name, value, options = {}) => {
+    if (name === "jwt" && process.env.NODE_ENV === "production") {
+      return originalCookie(name, value, {
+        ...options,
+        sameSite: "none",
+        secure: true,
+      });
+    }
+
+    return originalCookie(name, value, options);
+  };
+
+  next();
+});
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
+  const frontendOrigin =
+    process.env.FRONTEND_URL || "https://homelyhub-chi.vercel.app";
 
-  if (origin && allowedOrigins.has(origin)) {
+  const isAllowedOrigin =
+    origin &&
+    (origin === process.env.FRONTEND_URL ||
+      origin === frontendOrigin ||
+      origin === "http://localhost:3000" ||
+      origin === "http://127.0.0.1:3000");
+
+  if (isAllowedOrigin) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,PUT,DELETE,OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader("Vary", "Origin");
   }
 
   if (req.method === "OPTIONS") {
